@@ -14,3 +14,4 @@ extern Plant plants[];
 extern Pump pumps[];
 extern const int NUM_PUMPS;
 extern const int EEPROM_SIZE;
+extern const int SIZE_PER_PLANT;
