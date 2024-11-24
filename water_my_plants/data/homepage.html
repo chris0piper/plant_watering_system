@@ -7,7 +7,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <style>
         /* iOS specific styles */
-        input[type="number"] {
+        input[type="number"], input[type="text"] {
             -webkit-appearance: none;
             margin: 0;
             -moz-appearance: textfield;
@@ -35,6 +35,48 @@
         .scroll-container {
             -webkit-overflow-scrolling: touch;
         }
+
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            width: 90%;
+            max-width: 400px;
+            margin: 1rem;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+
+        /* Prevent background scrolling when modal is open */
+        .modal-open {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        .edit-icon {
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        
+        .edit-icon:hover {
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-green-50 to-blue-50 min-h-screen p-4">
@@ -57,6 +99,46 @@
         </div>
     </div>
 
+    <!-- Water confirmation modal -->
+    <div id="confirmModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Confirm Watering</h3>
+            <p class="text-gray-600 mb-6">Are you sure you want to water this plant now?</p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="hideConfirmModal()" class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
+                    Cancel
+                </button>
+                <button id="confirmWaterButton" class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600">
+                    Water Now
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Name edit modal -->
+    <div id="nameEditModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Rename Plant</h3>
+            <div class="mb-6">
+                <label for="newPlantName" class="block text-sm font-medium text-gray-700 mb-2">New Name:</label>
+                <input 
+                    type="text" 
+                    id="newPlantName"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter new name"
+                >
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button onclick="hideNameEditModal()" class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
+                    Cancel
+                </button>
+                <button id="confirmNameButton" class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600">
+                    Save
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_ENDPOINT = '/api/plants';
         
@@ -74,6 +156,76 @@
             if (!minutes || isNaN(minutes)) return 'Unknown';
             return `${(minutes / 1440).toFixed(1)} days`;
         }
+
+        // Store the pending actions
+        let pendingWaterAction = null;
+        let pendingNameEdit = null;
+
+        // Water confirmation modal functions
+        function showConfirmModal(index) {
+            pendingWaterAction = index;
+            document.getElementById('confirmModal').style.display = 'flex';
+            document.body.classList.add('modal-open');
+            
+            document.getElementById('confirmWaterButton').onclick = () => {
+                if (pendingWaterAction !== null) {
+                    waterNow(pendingWaterAction);
+                }
+                hideConfirmModal();
+            };
+        }
+
+        function hideConfirmModal() {
+            document.getElementById('confirmModal').style.display = 'none';
+            document.body.classList.remove('modal-open');
+            pendingWaterAction = null;
+        }
+
+        // Name edit modal functions
+        function showNameEditModal(index, currentName) {
+            pendingNameEdit = index;
+            document.getElementById('nameEditModal').style.display = 'flex';
+            document.body.classList.add('modal-open');
+            
+            const input = document.getElementById('newPlantName');
+            input.value = currentName;
+            input.select();
+            
+            document.getElementById('confirmNameButton').onclick = () => {
+                const newName = input.value.trim();
+                if (newName) {
+                    updatePlantName(pendingNameEdit, newName);
+                }
+                hideNameEditModal();
+            };
+
+            input.onkeyup = (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('confirmNameButton').click();
+                } else if (e.key === 'Escape') {
+                    hideNameEditModal();
+                }
+            };
+        }
+
+        function hideNameEditModal() {
+            document.getElementById('nameEditModal').style.display = 'none';
+            document.body.classList.remove('modal-open');
+            pendingNameEdit = null;
+        }
+
+        // Close modals when clicking outside
+        document.getElementById('confirmModal').addEventListener('click', (e) => {
+            if (e.target.id === 'confirmModal') {
+                hideConfirmModal();
+            }
+        });
+
+        document.getElementById('nameEditModal').addEventListener('click', (e) => {
+            if (e.target.id === 'nameEditModal') {
+                hideNameEditModal();
+            }
+        });
 
         async function updateWateringAmount(index, amount) {
             try {
@@ -105,7 +257,27 @@
             }
         }
 
+        async function updatePlantName(index, name) {
+            try {
+                const response = await fetch(`/api/plants/${index}/name`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name })
+                });
+                if (!response.ok) throw new Error('Failed to update plant name');
+                updateDashboard();
+            } catch (error) {
+                console.error('Error updating plant name:', error);
+                alert('Failed to update plant name');
+            }
+        }
+
         async function waterNow(index) {
+            if (index === null || index === undefined) {
+                console.error('Invalid plant index');
+                return;
+            }
+            
             try {
                 const response = await fetch(`/api/plants/${index}/water-now`, {
                     method: 'POST',
@@ -129,8 +301,14 @@
                 <div class="bg-white rounded-xl shadow-lg overflow-hidden">
                     <div class="p-4 sm:p-6">
                         <div class="flex justify-between items-start mb-4">
-                            <div>
+                            <div class="flex items-center space-x-2">
                                 <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 mb-1">${plant.name}</h2>
+                                <button 
+                                    onclick="showNameEditModal(${index}, '${plant.name.replace(/'/g, "\\'")}')"
+                                    class="edit-icon p-1 text-gray-400 hover:text-gray-600"
+                                >
+                                    ✎
+                                </button>
                             </div>
                             <div class="flex flex-col items-end">
                                 <span class="text-gray-500 text-sm mb-1">Pump ${index + 1}</span>
@@ -163,7 +341,7 @@
                                 </div>
                             </div>
                             <button 
-                                onclick="waterNow(${index})"
+                                onclick="showConfirmModal(${index})"
                                 class="w-full bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
                             >
                                 Water Now
@@ -203,62 +381,63 @@
                 
                 if (!Array.isArray(plants)) {
                     throw new Error('Invalid data format received from API');
+
                 }
 
-                const container = document.getElementById('plants-container');
-                if (!container) {
-                    throw new Error('Plants container not found');
-                }
+const container = document.getElementById('plants-container');
+if (!container) {
+    throw new Error('Plants container not found');
+}
 
-                const plantCards = plants.map((plant, index) => {
-                    try {
-                        return createPlantCard(plant, index);
-                    } catch (e) {
-                        console.error('Error creating plant card:', e);
-                        return '';
-                    }
-                }).join('');
+const plantCards = plants.map((plant, index) => {
+    try {
+        return createPlantCard(plant, index);
+    } catch (e) {
+        console.error('Error creating plant card:', e);
+        return '';
+    }
+}).join('');
 
-                container.innerHTML = plantCards || `
-                    <div class="col-span-3 text-center p-8">
-                        <div class="inline-block p-6 bg-yellow-50 rounded-lg">
-                            <p class="text-yellow-600 font-medium">No plants found</p>
-                        </div>
-                    </div>
-                `;
-                
-                updateTimestamp();
-                const indicator = document.getElementById('status-indicator');
-                if (indicator) {
-                    indicator.classList.remove('bg-red-500');
-                    indicator.classList.add('bg-green-500');
-                }
-            } catch (error) {
-                console.error('Error updating dashboard:', error);
-                const container = document.getElementById('plants-container');
-                const indicator = document.getElementById('status-indicator');
-                
-                if (indicator) {
-                    indicator.classList.remove('bg-green-500');
-                    indicator.classList.add('bg-red-500');
-                }
-                
-                if (container) {
-                    container.innerHTML = `
-                        <div class="col-span-3 text-center p-8">
-                            <div class="inline-block p-6 bg-red-50 rounded-lg">
-                                <p class="text-red-600 font-medium">Error loading plant data</p>
-                                <p class="text-red-500 text-sm mt-2">Please check your connection and try again</p>
-                            </div>
-                        </div>
-                    `;
-                }
-            }
-        }
+container.innerHTML = plantCards || `
+    <div class="col-span-3 text-center p-8">
+        <div class="inline-block p-6 bg-yellow-50 rounded-lg">
+            <p class="text-yellow-600 font-medium">No plants found</p>
+        </div>
+    </div>
+`;
 
-        // Initial load and setup refresh
-        updateDashboard();
-        setInterval(updateDashboard, 60000);
-    </script>
+updateTimestamp();
+const indicator = document.getElementById('status-indicator');
+if (indicator) {
+    indicator.classList.remove('bg-red-500');
+    indicator.classList.add('bg-green-500');
+}
+} catch (error) {
+console.error('Error updating dashboard:', error);
+const container = document.getElementById('plants-container');
+const indicator = document.getElementById('status-indicator');
+
+if (indicator) {
+    indicator.classList.remove('bg-green-500');
+    indicator.classList.add('bg-red-500');
+}
+
+if (container) {
+    container.innerHTML = `
+        <div class="col-span-3 text-center p-8">
+            <div class="inline-block p-6 bg-red-50 rounded-lg">
+                <p class="text-red-600 font-medium">Error loading plant data</p>
+                <p class="text-red-500 text-sm mt-2">Please check your connection and try again</p>
+            </div>
+        </div>
+    `;
+}
+}
+}
+
+// Initial load and setup refresh
+updateDashboard();
+setInterval(updateDashboard, 60000);
+</script>
 </body>
 </html>

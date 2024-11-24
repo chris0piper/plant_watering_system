@@ -37,6 +37,11 @@ void setup() {
         return;
     }
     
+    if(!SPIFFS.begin(true)){
+        Serial.println("An Error has occurred while mounting SPIFFS");
+        return;
+    }
+
     loadWateringTimes();
 
     // Set up the web server

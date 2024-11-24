@@ -6,6 +6,9 @@
 #include <EEPROM.h>
 #include "ESPAsyncWebServer.h"
 #include "SPIFFS.h"
+#include <ArduinoJson.h>
+#include <AsyncJson.h>
+
 
 // Constants
 #define WATERING_HISTORY_SIZE 5
@@ -19,7 +22,7 @@ struct WateringEvent {
 };
 
 struct Plant {
-    const char* name;        
+    char name[32];  // Fixed size array instead of const char*
     float ozPerWatering;     
     int intervalMinutes;     
     WateringEvent wateringHistory[WATERING_HISTORY_SIZE];
