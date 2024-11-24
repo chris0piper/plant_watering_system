@@ -1,12 +1,42 @@
 // storage.cpp
 #include "water_my_plants.h"
 
+// Define a magic number to verify EEPROM data validity
+#define EEPROM_MAGIC_NUMBER 0xABCD1234
+
 void saveWateringTimes() {
     int addr = 0;
+
+    // Write magic number
+    uint32_t magicNumber = EEPROM_MAGIC_NUMBER;
+    EEPROM.put(addr, magicNumber);
+    addr += sizeof(uint32_t);
+
     for (int i = 0; i < NUM_PUMPS; i++) {
+        // Save name[32]
+        EEPROM.put(addr, plants[i].name);
+        addr += 32;
+
+        // Save ozPerWatering
+        EEPROM.put(addr, plants[i].ozPerWatering);
+        addr += sizeof(float);
+
+        // Save intervalMinutes
+        EEPROM.put(addr, plants[i].intervalMinutes);
+        addr += sizeof(int);
+
+        // Save currentHistoryIndex
         EEPROM.put(addr, plants[i].currentHistoryIndex);
         addr += sizeof(int);
 
+        // Save needsWatering
+        EEPROM.put(addr, plants[i].needsWatering);
+        addr += sizeof(bool);
+
+        // Padding to align to 4 bytes
+        addr += 3;  // Skip 3 bytes for alignment
+
+        // Save wateringHistory
         for (int j = 0; j < WATERING_HISTORY_SIZE; j++) {
             EEPROM.put(addr, plants[i].wateringHistory[j].timestamp);
             addr += sizeof(time_t);
@@ -22,16 +52,43 @@ void loadWateringTimes() {
     time_t currentTime;
     time(&currentTime);
 
+    // Read magic number to verify data validity
+    uint32_t magicNumber;
+    EEPROM.get(addr, magicNumber);
+    addr += sizeof(uint32_t);
+
+    if (magicNumber != EEPROM_MAGIC_NUMBER) {
+        Serial.println("No valid data in EEPROM, using default plant settings");
+        return;
+    }
+
     for (int i = 0; i < NUM_PUMPS; i++) {
-        int loadedIndex;
-        EEPROM.get(addr, loadedIndex);
+        // Load name[32]
+        char loadedName[32];
+        EEPROM.get(addr, loadedName);
+        addr += 32;
+        strncpy(plants[i].name, loadedName, 32);
+
+        // Load ozPerWatering
+        EEPROM.get(addr, plants[i].ozPerWatering);
+        addr += sizeof(float);
+
+        // Load intervalMinutes
+        EEPROM.get(addr, plants[i].intervalMinutes);
         addr += sizeof(int);
 
-        if (loadedIndex < 0 || loadedIndex >= WATERING_HISTORY_SIZE) {
-            loadedIndex = 0;
-        }
-        plants[i].currentHistoryIndex = loadedIndex;
+        // Load currentHistoryIndex
+        EEPROM.get(addr, plants[i].currentHistoryIndex);
+        addr += sizeof(int);
 
+        // Load needsWatering
+        EEPROM.get(addr, plants[i].needsWatering);
+        addr += sizeof(bool);
+
+        // Padding to align to 4 bytes
+        addr += 3;
+
+        // Load wateringHistory
         bool validHistory = true;
         for (int j = 0; j < WATERING_HISTORY_SIZE; j++) {
             time_t timestamp;
@@ -41,6 +98,7 @@ void loadWateringTimes() {
             EEPROM.get(addr, amount);
             addr += sizeof(float);
 
+            // Validate the loaded data
             if (timestamp > currentTime || timestamp < 0 || amount < 0 || amount > 100) {
                 validHistory = false;
                 break;
@@ -62,22 +120,51 @@ void loadWateringTimes() {
 
 void resetEEPROM() {
     int addr = 0;
-    
+
+    // Invalidate EEPROM data by resetting the magic number
+    uint32_t magicNumber = 0;
+    EEPROM.put(addr, magicNumber);
+    addr += sizeof(uint32_t);
+
+    // Clear plant data
     for (int i = 0; i < NUM_PUMPS; i++) {
-        EEPROM.put(addr, 0);
+        // Clear name
+        char emptyName[32] = {0};
+        EEPROM.put(addr, emptyName);
+        addr += 32;
+
+        // Zero ozPerWatering
+        float zeroFloat = 0.0;
+        EEPROM.put(addr, zeroFloat);
+        addr += sizeof(float);
+
+        // Zero intervalMinutes
+        int zeroInt = 0;
+        EEPROM.put(addr, zeroInt);
         addr += sizeof(int);
-        
+
+        // Zero currentHistoryIndex
+        EEPROM.put(addr, zeroInt);
+        addr += sizeof(int);
+
+        // Zero needsWatering
+        bool falseBool = false;
+        EEPROM.put(addr, falseBool);
+        addr += sizeof(bool);
+
+        // Padding to align to 4 bytes
+        addr += 3;
+
+        // Zero wateringHistory
         for (int j = 0; j < WATERING_HISTORY_SIZE; j++) {
             time_t zeroTime = 0;
             EEPROM.put(addr, zeroTime);
             addr += sizeof(time_t);
-            
-            float zeroAmount = 0.0;
-            EEPROM.put(addr, zeroAmount);
+
+            EEPROM.put(addr, zeroFloat);
             addr += sizeof(float);
         }
     }
-    
     if (EEPROM.commit()) {
         Serial.println("EEPROM successfully reset");
     } else {

@@ -37,5 +37,16 @@ Pump pumps[] = {
     {17, 5,  8, &plants[7], false, 0, 0}
 };
 
+// EEPROM size calculation
+
 const int NUM_PUMPS = sizeof(pumps) / sizeof(pumps[0]);
-const int EEPROM_SIZE = NUM_PUMPS * (sizeof(int) + WATERING_HISTORY_SIZE * (sizeof(time_t) + sizeof(float)));
+const int SIZE_PER_PLANT = 
+    32 +                   // name[32]
+    sizeof(float) +        // ozPerWatering
+    sizeof(int) +          // intervalMinutes
+    sizeof(int) +          // currentHistoryIndex
+    sizeof(bool) +         // needsWatering
+    3 +                    // padding to align to 4 bytes
+    (WATERING_HISTORY_SIZE * (sizeof(time_t) + sizeof(float))); // wateringHistory
+
+const int EEPROM_SIZE = sizeof(uint32_t) + NUM_PUMPS * SIZE_PER_PLANT;
