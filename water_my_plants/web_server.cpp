@@ -74,22 +74,23 @@ void setupWebServer() {
 
     // Handle amount update
     server.on(
-        "^\\/api\\/plants\\/([0-9]+)\\/amount$", 
+        "^\\/api\\/plants\\/([0-9]+)\\/amount$",
         HTTP_PUT,
-        [](AsyncWebServerRequest *request) {},  // Empty request handler
-        nullptr,  // onUpload
+        [](AsyncWebServerRequest *request) {},
+        nullptr,
         [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
             String indexStr = request->pathArg(0);
             int plantIndex = indexStr.toInt();
-            
+
             if (plantIndex >= 0 && plantIndex < NUM_PUMPS) {
                 StaticJsonDocument<200> doc;
                 DeserializationError error = deserializeJson(doc, (char*)data);
-                
+
                 if (!error && doc.containsKey("ozPerWatering")) {
                     float amount = doc["ozPerWatering"].as<float>();
                     if (amount > 0) {
                         plants[plantIndex].ozPerWatering = amount;
+                        saveWateringTimes();  // Save changes to EEPROM
                         request->send(200, "application/json", "{\"success\":true}");
                         return;
                     }
@@ -100,25 +101,25 @@ void setupWebServer() {
             }
         }
     );
-
     // Handle interval update
     server.on(
-        "^\\/api\\/plants\\/([0-9]+)\\/interval$", 
+        "^\\/api\\/plants\\/([0-9]+)\\/interval$",
         HTTP_PUT,
-        [](AsyncWebServerRequest *request) {},  // Empty request handler
-        nullptr,  // onUpload
+        [](AsyncWebServerRequest *request) {},
+        nullptr,
         [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
             String indexStr = request->pathArg(0);
             int plantIndex = indexStr.toInt();
-            
+
             if (plantIndex >= 0 && plantIndex < NUM_PUMPS) {
                 StaticJsonDocument<200> doc;
                 DeserializationError error = deserializeJson(doc, (char*)data);
-                
+
                 if (!error && doc.containsKey("intervalDays")) {
                     float days = doc["intervalDays"].as<float>();
                     if (days > 0) {
                         plants[plantIndex].intervalMinutes = days * 24 * 60;
+                        saveWateringTimes();  // Save changes to EEPROM
                         request->send(200, "application/json", "{\"success\":true}");
                         return;
                     }
@@ -130,27 +131,35 @@ void setupWebServer() {
         }
     );
 
+
     // Handle name update
     server.on(
-        "^\\/api\\/plants\\/([0-9]+)\\/name$", 
+        "^\\/api\\/plants\\/([0-9]+)\\/name$",
         HTTP_PUT,
-        [](AsyncWebServerRequest *request) {},  // Empty request handler
-        nullptr,  // onUpload
+        [](AsyncWebServerRequest *request) {},
+        nullptr,
         [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
             String indexStr = request->pathArg(0);
             int plantIndex = indexStr.toInt();
-            
+
             if (plantIndex >= 0 && plantIndex < NUM_PUMPS) {
                 StaticJsonDocument<200> doc;
                 DeserializationError error = deserializeJson(doc, (char*)data);
-                
+
                 if (!error && doc.containsKey("name")) {
                     const char* newName = doc["name"].as<const char*>();
                     if (newName && strlen(newName) > 0) {
-                        strncpy(plants[plantIndex].name, newName, sizeof(plants[plantIndex].name) - 1);
-                        plants[plantIndex].name[sizeof(plants[plantIndex].name) - 1] = '\0'; // Ensure null termination
-                        request->send(200, "application/json", "{\"success\":true}");
-                        return;
+                        size_t nameLength = strlen(newName);
+                        if (nameLength < sizeof(plants[plantIndex].name)) {
+                            strncpy(plants[plantIndex].name, newName, sizeof(plants[plantIndex].name) - 1);
+                            plants[plantIndex].name[sizeof(plants[plantIndex].name) - 1] = '\0'; // Ensure null termination
+                            saveWateringTimes();  // Save changes to EEPROM
+                            request->send(200, "application/json", "{\"success\":true}");
+                            return;
+                        } else {
+                            request->send(400, "application/json", "{\"error\":\"Name too long (max 31 characters)\"}");
+                            return;
+                        }
                     }
                 }
                 request->send(400, "application/json", "{\"error\":\"Invalid name\"}");
