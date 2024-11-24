@@ -125,6 +125,23 @@ app.post('/api/plants/:index/water-now', (req, res) => {
     res.json({ success: true });
 });
 
+app.put('/api/plants/:index/name', (req, res) => {
+    const index = parseInt(req.params.index);
+    const { name } = req.body;
+    
+    if (isNaN(index) || index < 0 || index >= plants.length) {
+        return res.status(400).json({ error: 'Invalid plant index' });
+    }
+    
+    if (typeof name !== 'string' || !name.trim()) {
+        return res.status(400).json({ error: 'Invalid name' });
+    }
+    
+    plants[index].name = name.trim();
+    res.json({ success: true });
+});
+
 app.listen(port, () => {
     console.log(`Mock ESP32 server running at http://localhost:${port}`);
 });
+
