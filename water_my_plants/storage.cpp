@@ -178,27 +178,44 @@ void resetPlantHistory(int plantIndex) {
         return;
     }
 
-    int addr = plantIndex * (sizeof(int) + WATERING_HISTORY_SIZE * (sizeof(time_t) + sizeof(float)));
-    
-    EEPROM.put(addr, 0);
+    // Calculate the starting address of the plant's data in EEPROM
+    int addr = sizeof(uint32_t) + plantIndex * SIZE_PER_PLANT;
+
+    // Skip to currentHistoryIndex
+    addr += 32 + sizeof(float) + sizeof(int);  // Skip name, ozPerWatering, intervalMinutes
+
+    // Reset currentHistoryIndex
+    int zeroInt = 0;
+    EEPROM.put(addr, zeroInt);
     addr += sizeof(int);
-    
+
+    // Reset needsWatering
+    bool falseBool = false;
+    EEPROM.put(addr, falseBool);
+    addr += sizeof(bool);
+
+    // Skip padding
+    addr += 3;
+
+    // Reset wateringHistory
     for (int j = 0; j < WATERING_HISTORY_SIZE; j++) {
         time_t zeroTime = 0;
         EEPROM.put(addr, zeroTime);
         addr += sizeof(time_t);
-        
+
         float zeroAmount = 0.0;
         EEPROM.put(addr, zeroAmount);
         addr += sizeof(float);
     }
-    
+
+    // Update the plant structure in RAM
     plants[plantIndex].currentHistoryIndex = 0;
+    plants[plantIndex].needsWatering = false;
     for (int j = 0; j < WATERING_HISTORY_SIZE; j++) {
         plants[plantIndex].wateringHistory[j].timestamp = 0;
         plants[plantIndex].wateringHistory[j].amount = 0;
     }
-    
+
     if (EEPROM.commit()) {
         Serial.printf("Successfully reset watering history for %s\n", plants[plantIndex].name);
     } else {

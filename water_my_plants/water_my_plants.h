@@ -1,4 +1,4 @@
-// plant_watering_system.h
+// water_my_plants.h
 #pragma once
 #include <Arduino.h>
 #include <WiFi.h>
