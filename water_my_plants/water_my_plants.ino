@@ -38,6 +38,9 @@ void setup() {
     }
     
     loadWateringTimes();
+
+    // Set up the web server
+    setupWebServer();
     
     Serial.println("Plant Watering System Initialized");
     printPlantSchedules();
@@ -68,5 +71,5 @@ void loop() {
     
     checkWateringNeeds();
     waterPlants();
-    delay(10000);
+    delay(1000);
 }

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Plant Watering System</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-br from-green-50 to-blue-50 min-h-screen p-4">
+    <div class="max-w-7xl mx-auto">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-3">Smart Plant Watering System</h1>
+            <p class="text-gray-600">Keeping your plants happy and healthy</p>
+            <div class="mt-4 inline-flex items-center px-4 py-2 bg-green-100 rounded-full">
+                <div id="status-indicator" class="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                <span id="update-status" class="text-sm text-green-700">Last updated: Just now</span>
+            </div>
+        </header>
+
+        <div id="plants-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="col-span-3 text-center p-8">
+                <div class="inline-block p-6 bg-blue-50 rounded-lg">
+                    <p class="text-blue-600 font-medium">Loading plant data...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_ENDPOINT = '/api/plants';
+        
+        function formatDate(timestamp) {
+            if (!timestamp) return 'No record';
+            try {
+                return new Date(timestamp * 1000).toLocaleString();
+            } catch (e) {
+                console.error('Error formatting date:', e);
+                return 'Invalid date';
+            }
+        }
+
+        function formatInterval(minutes) {
+            if (!minutes || isNaN(minutes)) return 'Unknown';
+            return `${(minutes / 1440).toFixed(1)} days`;
+        }
+
+        async function updateWateringAmount(index, amount) {
+            try {
+                const response = await fetch(`/api/plants/${index}/amount`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ozPerWatering: amount })
+                });
+                if (!response.ok) throw new Error('Failed to update watering amount');
+                updateDashboard();
+            } catch (error) {
+                console.error('Error updating watering amount:', error);
+                alert('Failed to update watering amount');
+            }
+        }
+
+        async function updateWateringInterval(index, days) {
+            try {
+                const response = await fetch(`/api/plants/${index}/interval`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ intervalDays: days })
+                });
+                if (!response.ok) throw new Error('Failed to update watering interval');
+                updateDashboard();
+            } catch (error) {
+                console.error('Error updating watering interval:', error);
+                alert('Failed to update watering interval');
+            }
+        }
+
+        async function waterNow(index) {
+            try {
+                const response = await fetch(`/api/plants/${index}/water-now`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (!response.ok) throw new Error('Failed to trigger watering');
+                updateDashboard();
+            } catch (error) {
+                console.error('Error triggering watering:', error);
+                alert('Failed to trigger watering');
+            }
+        }
+
+        function createPlantCard(plant, index) {
+            if (!plant || !plant.name) {
+                console.error('Invalid plant data:', plant);
+                return '';
+            }
+
+            return `
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h2 class="text-2xl font-semibold text-gray-800 mb-1">${plant.name}</h2>
+                            </div>
+                            <div class="flex flex-col items-end">
+                                <span class="text-gray-500 text-sm mb-1">Pump ${index + 1}</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4 bg-gray-50 p-4 rounded-lg mb-6">
+                            <div class="flex flex-col space-y-2">
+                                <label class="text-gray-600">Water Amount (oz):</label>
+                                <div class="flex space-x-2">
+                                    <input 
+                                        type="number" 
+                                        step="0.1" 
+                                        value="${plant.ozPerWatering}"
+                                        class="flex-1 border rounded px-2 py-1"
+                                        onchange="updateWateringAmount(${index}, parseFloat(this.value))"
+                                    >
+                                </div>
+                            </div>
+                            <div class="flex flex-col space-y-2">
+                                <label class="text-gray-600">Watering Interval (days):</label>
+                                <div class="flex space-x-2">
+                                    <input 
+                                        type="number" 
+                                        step="0.5" 
+                                        value="${(plant.intervalMinutes / 1440).toFixed(1)}"
+                                        class="flex-1 border rounded px-2 py-1"
+                                        onchange="updateWateringInterval(${index}, parseFloat(this.value))"
+                                    >
+                                </div>
+                            </div>
+                            <button 
+                                onclick="waterNow(${index})"
+                                class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded transition-colors"
+                            >
+                                Water Now
+                            </button>
+                        </div>
+
+                        <div class="border-t pt-4">
+                            <h3 class="text-sm font-semibold text-gray-700 mb-3">Recent Watering History</h3>
+                            <div class="space-y-3">
+                                ${(plant.wateringHistory || []).map((event, i) => `
+                                    <div class="flex justify-between items-center text-sm ${i === 0 ? 'text-gray-800 font-medium' : 'text-gray-500'}">
+                                        <span>${formatDate(event.timestamp)}</span>
+                                        <span class="font-mono">${event.amount.toFixed(1)} oz</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateTimestamp() {
+            const status = document.getElementById('update-status');
+            if (status) {
+                status.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+            }
+        }
+
+        async function updateDashboard() {
+            try {
+                const response = await fetch(API_ENDPOINT);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const plants = await response.json();
+                
+                if (!Array.isArray(plants)) {
+                    throw new Error('Invalid data format received from API');
+                }
+
+                const container = document.getElementById('plants-container');
+                if (!container) {
+                    throw new Error('Plants container not found');
+                }
+
+                const plantCards = plants.map((plant, index) => {
+                    try {
+                        return createPlantCard(plant, index);
+                    } catch (e) {
+                        console.error('Error creating plant card:', e);
+                        return '';
+                    }
+                }).join('');
+
+                container.innerHTML = plantCards || `
+                    <div class="col-span-3 text-center p-8">
+                        <div class="inline-block p-6 bg-yellow-50 rounded-lg">
+                            <p class="text-yellow-600 font-medium">No plants found</p>
+                        </div>
+                    </div>
+                `;
+                
+                updateTimestamp();
+                const indicator = document.getElementById('status-indicator');
+                if (indicator) {
+                    indicator.classList.remove('bg-red-500');
+                    indicator.classList.add('bg-green-500');
+                }
+            } catch (error) {
+                console.error('Error updating dashboard:', error);
+                const container = document.getElementById('plants-container');
+                const indicator = document.getElementById('status-indicator');
+                
+                if (indicator) {
+                    indicator.classList.remove('bg-green-500');
+                    indicator.classList.add('bg-red-500');
+                }
+                
+                if (container) {
+                    container.innerHTML = `
+                        <div class="col-span-3 text-center p-8">
+                            <div class="inline-block p-6 bg-red-50 rounded-lg">
+                                <p class="text-red-600 font-medium">Error loading plant data</p>
+                                <p class="text-red-500 text-sm mt-2">Please check your connection and try again</p>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // Initial load and setup refresh
+        updateDashboard();
+        setInterval(updateDashboard, 60000);
+    </script>
+</body>
+</html>

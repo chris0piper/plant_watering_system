@@ -4,6 +4,8 @@
 #include <WiFi.h>
 #include <time.h>
 #include <EEPROM.h>
+#include "ESPAsyncWebServer.h"
+#include "SPIFFS.h"
 
 // Constants
 #define WATERING_HISTORY_SIZE 5
@@ -47,6 +49,8 @@ void resetEEPROM();
 void resetPlantHistory(int plantIndex);
 void pumpOn(Pump& pump);
 void pumpOff(Pump& pump);
+void setupWebServer();
+String getPlantDataJson();
 
 // External variable declarations
 extern const char* ssid;
@@ -60,3 +64,5 @@ extern Plant plants[];
 extern Pump pumps[];
 extern const int NUM_PUMPS;
 extern const int EEPROM_SIZE;
+extern AsyncWebServer server;
+

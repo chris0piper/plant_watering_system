@@ -1,0 +1,15 @@
+{
+  "name": "plant_watering_system",
+  "version": "1.0.0",
+  "description": "Tired of my plants dying of thirst, not anymore",
+  "main": "mock_server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.21.1"
+  }
+}
