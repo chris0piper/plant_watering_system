@@ -16,11 +16,14 @@ String getPlantDataJson() {
         
         // Add watering history
         json += "\"wateringHistory\":[";
+        int currentIndex = plants[i].currentHistoryIndex;
         for (int j = 0; j < WATERING_HISTORY_SIZE; j++) {
             if (j > 0) json += ",";
+            // Calculate the index going backwards from current
+            int historyIndex = (currentIndex - 1 - j + WATERING_HISTORY_SIZE) % WATERING_HISTORY_SIZE;
             json += "{";
-            json += "\"timestamp\":" + String(plants[i].wateringHistory[j].timestamp) + ",";
-            json += "\"amount\":" + String(plants[i].wateringHistory[j].amount);
+            json += "\"timestamp\":" + String(plants[i].wateringHistory[historyIndex].timestamp) + ",";
+            json += "\"amount\":" + String(plants[i].wateringHistory[historyIndex].amount);
             json += "}";
         }
         json += "]";
