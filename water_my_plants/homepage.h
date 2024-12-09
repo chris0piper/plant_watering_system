@@ -254,67 +254,168 @@ const char HOMEPAGE_HTML[] PROGMEM = R"rawliteral(
             }
         });
 
+        // Wrapper functions for backward compatibility
         async function updateWateringAmount(index, amount) {
-            try {
-                const response = await fetch(`/api/plants/${index}/amount`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ozPerWatering: amount })
-                });
-                if (!response.ok) throw new Error('Failed to update watering amount');
-                updateDashboard();
-            } catch (error) {
-                console.error('Error updating watering amount:', error);
-                alert('Failed to update watering amount');
-            }
+            return updatePlantAmount(index, amount);
         }
 
         async function updateWateringInterval(index, days) {
+            return updatePlantInterval(index, days);
+        }
+
+        // Update dashboard to use fetchPlants
+        async function updateDashboard() {
+            return fetchPlants();
+        }
+
+        // Rename fetchPlants to be more descriptive
+        async function fetchPlants() {
             try {
-                const response = await fetch(`/api/plants/${index}/interval`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ intervalDays: days })
-                });
-                if (!response.ok) throw new Error('Failed to update watering interval');
-                updateDashboard();
+                const response = await fetch(API_ENDPOINT);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const plants = await response.json();
+                
+                if (!Array.isArray(plants)) {
+                    throw new Error('Invalid data format received from API');
+                }
+
+                const container = document.getElementById('plants-container');
+                if (!container) {
+                    throw new Error('Plants container not found');
+                }
+
+                const plantCards = plants.map((plant, index) => {
+                    try {
+                        return createPlantCard(plant, index);
+                    } catch (e) {
+                        console.error('Error creating plant card:', e);
+                        return '';
+                    }
+                }).join('');
+
+                container.innerHTML = plantCards || `
+                    <div class="col-span-3 text-center p-8">
+                        <div class="inline-block p-6 bg-yellow-50 rounded-lg">
+                            <p class="text-yellow-600 font-medium">No plants found</p>
+                        </div>
+                    </div>
+                `;
+
+                updateTimestamp();
+                const indicator = document.getElementById('status-indicator');
+                if (indicator) {
+                    indicator.classList.remove('bg-red-500');
+                    indicator.classList.add('bg-green-500');
+                }
             } catch (error) {
-                console.error('Error updating watering interval:', error);
-                alert('Failed to update watering interval');
+                console.error('Error updating dashboard:', error);
+                const container = document.getElementById('plants-container');
+                const indicator = document.getElementById('status-indicator');
+
+                if (indicator) {
+                    indicator.classList.remove('bg-green-500');
+                    indicator.classList.add('bg-red-500');
+                }
+
+                if (container) {
+                    container.innerHTML = `
+                        <div class="col-span-3 text-center p-8">
+                            <div class="inline-block p-6 bg-red-50 rounded-lg">
+                                <p class="text-red-600 font-medium">Error loading plant data</p>
+                                <p class="text-red-500 text-sm mt-2">Please check your connection and try again</p>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // Initial load and setup refresh
+        fetchPlants();
+        setInterval(fetchPlants, 60000);
+
+        async function updatePlantAmount(index, amount) {
+            try {
+                const response = await fetch(`${API_ENDPOINT}/amount`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        plantIndex: index,
+                        ozPerWatering: amount
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Failed to update amount');
+                await fetchPlants(); // Refresh the display
+            } catch (error) {
+                console.error('Error updating amount:', error);
+                alert('Failed to update amount. Please try again.');
+            }
+        }
+
+        async function updatePlantInterval(index, days) {
+            try {
+                const response = await fetch(`${API_ENDPOINT}/interval`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        plantIndex: index,
+                        intervalDays: days
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Failed to update interval');
+                await fetchPlants(); // Refresh the display
+            } catch (error) {
+                console.error('Error updating interval:', error);
+                alert('Failed to update interval. Please try again.');
             }
         }
 
         async function updatePlantName(index, name) {
             try {
-                const response = await fetch(`/api/plants/${index}/name`, {
+                const response = await fetch(`${API_ENDPOINT}/name`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: name })
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        plantIndex: index,
+                        name: name
+                    })
                 });
-                if (!response.ok) throw new Error('Failed to update plant name');
-                updateDashboard();
+                
+                if (!response.ok) throw new Error('Failed to update name');
+                await fetchPlants(); // Refresh the display
             } catch (error) {
-                console.error('Error updating plant name:', error);
-                alert('Failed to update plant name');
+                console.error('Error updating name:', error);
+                alert('Failed to update name. Please try again.');
             }
         }
 
         async function waterNow(index) {
-            if (index === null || index === undefined) {
-                console.error('Invalid plant index');
-                return;
-            }
-            
             try {
-                const response = await fetch(`/api/plants/${index}/water-now`, {
+                const response = await fetch(`${API_ENDPOINT}/water-now`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        plantIndex: index
+                    })
                 });
-                if (!response.ok) throw new Error('Failed to trigger watering');
-                updateDashboard();
+                
+                if (!response.ok) throw new Error('Failed to water plant');
+                await fetchPlants(); // Refresh the display
             } catch (error) {
-                console.error('Error triggering watering:', error);
-                alert('Failed to trigger watering');
+                console.error('Error watering plant:', error);
+                alert('Failed to water plant. Please try again.');
             }
         }
 
@@ -397,75 +498,7 @@ const char HOMEPAGE_HTML[] PROGMEM = R"rawliteral(
                 status.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
             }
         }
-
-        async function updateDashboard() {
-            try {
-                const response = await fetch(API_ENDPOINT);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const plants = await response.json();
-                
-                if (!Array.isArray(plants)) {
-                    throw new Error('Invalid data format received from API');
-
-                }
-
-const container = document.getElementById('plants-container');
-if (!container) {
-    throw new Error('Plants container not found');
-}
-
-const plantCards = plants.map((plant, index) => {
-    try {
-        return createPlantCard(plant, index);
-    } catch (e) {
-        console.error('Error creating plant card:', e);
-        return '';
-    }
-}).join('');
-
-container.innerHTML = plantCards || `
-    <div class="col-span-3 text-center p-8">
-        <div class="inline-block p-6 bg-yellow-50 rounded-lg">
-            <p class="text-yellow-600 font-medium">No plants found</p>
-        </div>
-    </div>
-`;
-
-updateTimestamp();
-const indicator = document.getElementById('status-indicator');
-if (indicator) {
-    indicator.classList.remove('bg-red-500');
-    indicator.classList.add('bg-green-500');
-}
-} catch (error) {
-console.error('Error updating dashboard:', error);
-const container = document.getElementById('plants-container');
-const indicator = document.getElementById('status-indicator');
-
-if (indicator) {
-    indicator.classList.remove('bg-green-500');
-    indicator.classList.add('bg-red-500');
-}
-
-if (container) {
-    container.innerHTML = `
-        <div class="col-span-3 text-center p-8">
-            <div class="inline-block p-6 bg-red-50 rounded-lg">
-                <p class="text-red-600 font-medium">Error loading plant data</p>
-                <p class="text-red-500 text-sm mt-2">Please check your connection and try again</p>
-            </div>
-        </div>
-    `;
-}
-}
-}
-
-// Initial load and setup refresh
-updateDashboard();
-setInterval(updateDashboard, 60000);
-</script>
+    </script>
 </body>
 </html>
 )rawliteral";
