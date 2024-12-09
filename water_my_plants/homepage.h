@@ -1,3 +1,8 @@
+#ifndef HOMEPAGE_H
+#define HOMEPAGE_H
+
+const char HOMEPAGE_HTML[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -463,3 +468,6 @@ setInterval(updateDashboard, 60000);
 </script>
 </body>
 </html>
+)rawliteral";
+
+#endif

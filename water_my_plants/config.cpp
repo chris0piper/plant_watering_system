@@ -12,17 +12,18 @@ const char* ntpServer1 = "time.google.com";
 const char* ntpServer2 = "time.cloudflare.com";
 const long gmtOffset_sec = -18000;    // EST is UTC-5 * 3600 = -18000
 const int daylightOffset_sec = 3600;  // 1 hour DST
+const int MINUTES_PER_DAY = 1440;  // 24 hours * 60 minutes
 
 // Plant definitions
 Plant plants[] = {
-    {{"Prickly Pear"}, 3.0, 20160, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, false},
-    {{"Rosemary"}, 4.0, 10080, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, false},
-    {{"Fittonia"}, 2.5, 1440, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, false},
-    {{"Thyme"}, 3.0, 10080, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, false},
-    {{"Myrtle"}, 4.0, 4320, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, false},
-    {{"No Plant"}, 0.0, 100000, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, false},
-    {{"Lavender"}, 3.0, 14400, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, false},
-    {{"Mint Plant"}, 3.5, 2880, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, false}
+    {{"Prickly Pear"}, 3.0, 14 * MINUTES_PER_DAY, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, false},
+    {{"Rosemary"}, 3.0, 4 * MINUTES_PER_DAY, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, false},
+    {{"Fittonia"}, 1.5, 1 * MINUTES_PER_DAY, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, false},
+    {{"Thyme"}, 3.0, 3 * MINUTES_PER_DAY, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, false},
+    {{"Myrtle"}, 3.0, 2.5 * MINUTES_PER_DAY, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, false},
+    {{"No Plant"}, 0.0, 100 * MINUTES_PER_DAY, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, false},
+    {{"Lavender"}, 3.0, 4 * MINUTES_PER_DAY, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, false},
+    {{"Mint Plant"}, 3.0, 2 * MINUTES_PER_DAY, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, false}
 };
 
 // Pump definitions
